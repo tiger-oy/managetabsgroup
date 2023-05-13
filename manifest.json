@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Manager Tabs Group",
+  "version": "1.0.0",
+  "description": "manager tabs: merge tabs to group by domain, cancel merge, merge windows, reset windows, remove duplicated tabs",
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "permissions": [
+    "tabs",
+    "tabGroups"
+  ],
+  "icons": {
+    "16": "./static/icon/icon16.png",
+    "32": "./static/icon/icon32.png",
+    "64": "./static/icon/icon64.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "./static/icon/icon16.png",
+      "32": "./static/icon/icon32.png"
+    },
+    "default_popup": "popup.html",
+    "default_title": "Manager Tabs Group"
+  }
+}
