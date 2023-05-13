@@ -101,6 +101,13 @@ const removeTabDuplicated = () => {
 
 }
 
+async function getCurrentTab() {
+    let queryOptions = { active: true, lastFocusedWindow: true };
+    // `tab` will either be a `tabs.Tab` instance or `undefined`.
+    let [tab] = await chrome.tabs.query(queryOptions);
+    return tab;
+  }
+
 const mergeWindows = () => {
 
     chrome.tabs.query({},
@@ -108,7 +115,12 @@ const mergeWindows = () => {
 
             let windowData = {};
             let moveWindowData = {};
+            let lastFocusedTab = await getCurrentTab();
+            let lastWindowId = lastFocusedTab.windowId;
+
             tabs.forEach(tab => {
+                
+                console.log('lastWindow',lastWindowId);
                 if (windowData[tab.windowId]) {
                     windowData[tab.windowId].push(tab);
                 } else {
@@ -116,26 +128,24 @@ const mergeWindows = () => {
                 }
             });
 
-            let lastWindowId = null;
+            
+            let tabIds = [];
             for (var windowId in windowData) {
-                if (!lastWindowId) {
-                    lastWindowId = windowId;
-                }
-
+               
                 if (windowId != lastWindowId) {
                     moveWindowData[windowId] = windowData[windowId];
 
                     for (var tab of windowData[windowId]) {
-                        console.log('tab:', tab);
-                        await chrome.tabs.move(tab.id, { index: -1, windowId: parseInt(lastWindowId) });
+                        tabIds.push(tab.id);
                     }
                 }
             }
 
             let keys = Object.keys(moveWindowData);
             if (keys.length != 0) {
-                chrome.runtime.sendMessage({ messageType: "MOVE_WINDOW_DATA", data: moveWindowData }, function (response) {
+                chrome.runtime.sendMessage({ messageType: "MOVE_WINDOW_DATA", data: moveWindowData }, async function (response) {
                     console.log('send msg done', response);
+                    await chrome.tabs.move(tabIds, { index: -1, windowId: parseInt(lastWindowId) });
                 });
             }
 
@@ -143,7 +153,6 @@ const mergeWindows = () => {
 
 }
 const resetWindows = async () => {
-    let activeTab = await chrome.tabs.query({active: true});
     
     chrome.runtime.sendMessage({ messageType: "RESET_WINDOW_DATA" }, async function (data) {
         console.log('data',data);
