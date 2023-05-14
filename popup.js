@@ -15,8 +15,8 @@ const mergeTabDomain = () => {
         async function (tabs) {
             let tabData = {};
             let activeTab = null;
-            tabs.filter(tab => tab.groupId == -1 ).forEach(tab => {
-      
+            tabs.filter(tab => tab.groupId == -1).forEach(tab => {
+
                 if (tab.active) {
                     activeTab = tab;
                 }
@@ -39,7 +39,7 @@ const mergeTabDomain = () => {
                     tabData[hostName] = [tab.id];
                 }
             });
-           
+
             for (var prop in tabData) {
                 let tabIds = tabData[prop];
                 if (tabIds.length > 1) {
@@ -106,7 +106,7 @@ async function getCurrentTab() {
     // `tab` will either be a `tabs.Tab` instance or `undefined`.
     let [tab] = await chrome.tabs.query(queryOptions);
     return tab;
-  }
+}
 
 const mergeWindows = () => {
 
@@ -119,8 +119,8 @@ const mergeWindows = () => {
             let lastWindowId = lastFocusedTab.windowId;
 
             tabs.forEach(tab => {
-                
-                console.log('lastWindow',lastWindowId);
+
+                console.log('lastWindow', lastWindowId);
                 if (windowData[tab.windowId]) {
                     windowData[tab.windowId].push(tab);
                 } else {
@@ -128,24 +128,36 @@ const mergeWindows = () => {
                 }
             });
 
-            
+
             let tabIds = [];
+            let groupIds = [];
             for (var windowId in windowData) {
-               
+
                 if (windowId != lastWindowId) {
                     moveWindowData[windowId] = windowData[windowId];
 
                     for (var tab of windowData[windowId]) {
-                        tabIds.push(tab.id);
+                        if (tab.groupId != -1) {
+                            groupIds.push(tab.groupId);
+                        } else {
+                            tabIds.push(tab.id);
+                        }
+
+
                     }
                 }
             }
 
             let keys = Object.keys(moveWindowData);
             if (keys.length != 0) {
-                chrome.runtime.sendMessage({ messageType: "MOVE_WINDOW_DATA", data: moveWindowData }, async function (response) {
+                chrome.runtime.sendMessage({ messageType: "MOVE_WINDOW_DATA", data: moveWindowData }, function (response) {
                     console.log('send msg done', response);
-                    await chrome.tabs.move(tabIds, { index: -1, windowId: parseInt(lastWindowId) });
+                    let options = { index: -1, windowId: parseInt(lastWindowId) };
+                    chrome.tabs.move(tabIds, options);
+
+                    for (const groupId of groupIds) {
+                        chrome.tabGroups.move(parseInt(groupId), options);
+                    }
                 });
             }
 
@@ -153,19 +165,35 @@ const mergeWindows = () => {
 
 }
 const resetWindows = async () => {
-    
+
     chrome.runtime.sendMessage({ messageType: "RESET_WINDOW_DATA" }, async function (data) {
-        console.log('data',data);
+        console.log('data', data);
         for (const windowId in data) {
             let tabIds = [];
+            let groupIds = [];
             for (var tab of data[windowId]) {
-                tabIds.push(tab.id);
+
+                if (tab.groupId != -1) {
+                    groupIds.push(tab.groupId);
+                } else {
+                    tabIds.push(tab.id);
+                }
+
             }
-            let newWindow = await chrome.windows.create({ tabId: tabIds.pop() });
-            let newWindowId = newWindow.id;
+            let newWindow = null;
             if (tabIds.length > 0) {
-                await chrome.tabs.move(tabIds, { index: -1, windowId: newWindowId });
+                newWindow = await chrome.windows.create({ tabId: tabIds.pop() });
+            } else {
+                newWindow = await chrome.windows.create();
             }
+
+            let options = { index: -1, windowId: newWindow.id };
+            if (tabIds.length > 0) {
+                chrome.tabs.move(tabIds, options);
+            }
+            for (const groupId of groupIds) {
+                chrome.tabGroups.move(parseInt(groupId), options);
+            };
         }
 
     });
