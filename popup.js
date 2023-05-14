@@ -119,8 +119,6 @@ const mergeWindows = () => {
             let lastWindowId = lastFocusedTab.windowId;
 
             tabs.forEach(tab => {
-
-                console.log('lastWindow', lastWindowId);
                 if (windowData[tab.windowId]) {
                     windowData[tab.windowId].push(tab);
                 } else {
@@ -130,7 +128,7 @@ const mergeWindows = () => {
 
 
             let tabIds = [];
-            let groupIds = [];
+            let groupIds = new Set();
             for (var windowId in windowData) {
 
                 if (windowId != lastWindowId) {
@@ -138,27 +136,33 @@ const mergeWindows = () => {
 
                     for (var tab of windowData[windowId]) {
                         if (tab.groupId != -1) {
-                            groupIds.push(tab.groupId);
+                            groupIds.add(tab.groupId);
                         } else {
                             tabIds.push(tab.id);
                         }
-
-
                     }
                 }
             }
 
             let keys = Object.keys(moveWindowData);
-            if (keys.length != 0) {
-                chrome.runtime.sendMessage({ messageType: "MOVE_WINDOW_DATA", data: moveWindowData }, function (response) {
-                    console.log('send msg done', response);
-                    let options = { index: -1, windowId: parseInt(lastWindowId) };
-                    chrome.tabs.move(tabIds, options);
+            if (keys.length > 0) {
+                chrome.runtime.sendMessage({ messageType: "MOVE_WINDOW_DATA", data: moveWindowData }, async function (response) {
+                    try {
+                        console.log('send msg done', response);
+                        let options = { index: -1, windowId: parseInt(lastWindowId) };
+                        if (tabIds.length > 0) {
+                            await chrome.tabs.move(tabIds, options);
+                        }
+                        for (var groupId of groupIds.keys()) {
+                            
+                            await chrome.tabGroups.move(parseInt(groupId), options);
+                        }
 
-                    for (const groupId of groupIds) {
-                        chrome.tabGroups.move(parseInt(groupId), options);
+                    } catch (e) {
+                        console.error(e);
                     }
                 });
+
             }
 
         });
@@ -170,11 +174,11 @@ const resetWindows = async () => {
         console.log('data', data);
         for (const windowId in data) {
             let tabIds = [];
-            let groupIds = [];
+            let groupIds = new Set();
             for (var tab of data[windowId]) {
 
                 if (tab.groupId != -1) {
-                    groupIds.push(tab.groupId);
+                    groupIds.add(tab.groupId);
                 } else {
                     tabIds.push(tab.id);
                 }
@@ -191,8 +195,9 @@ const resetWindows = async () => {
             if (tabIds.length > 0) {
                 chrome.tabs.move(tabIds, options);
             }
-            for (const groupId of groupIds) {
+            for (var groupId of groupIds.keys()) {
                 chrome.tabGroups.move(parseInt(groupId), options);
+                chrome.tabGroups.update(groupId,{collapsed: true})
             };
         }
 
