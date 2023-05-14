@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Manager Tabs Group",
+  "name": "Manage Tabs Group",
   "version": "1.0.0",
   "description": "manager tabs: merge tabs to group by domain, cancel merge, merge windows, reset windows, remove duplicated tabs",
   "background": {
@@ -21,6 +21,6 @@
       "32": "./static/icon/icon32.png"
     },
     "default_popup": "popup.html",
-    "default_title": "Manager Tabs Group"
+    "default_title": "Manage Tabs Group"
   }
 }
